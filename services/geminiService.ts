@@ -20,17 +20,17 @@ const responseSchema: Schema = {
     },
     description: {
       type: Type.STRING,
-      description: "Uma análise psicológica profunda e personalizada sobre como este usuário processa informações, citando nuances específicas das respostas."
+      description: "Uma análise que valida a preferência natural do usuário, mas alerta sobre a necessidade de percorrer todo o ciclo (Sentir, Observar, Pensar, Fazer)."
     },
     strengths: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "Lista de 4 pontos fortes comportamentais específicos."
+      description: "4 pontos fortes para usar como alavanca (ex: autonomia, resolução de problemas)."
     },
     recommendations: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "Estratégias práticas e acionáveis adaptadas EXCLUSIVAMENTE ao contexto (Trabalho ou Estudo) e idade do usuário."
+      description: "Desafios práticos baseados em Andragogia e PBL (Project Based Learning). Devem focar em resolver problemas reais e aplicar conhecimento imediatamente."
     },
     axisData: {
       type: Type.OBJECT,
@@ -86,57 +86,42 @@ export const analyzeProfile = async (
     console.warn("API Key missing. Returning mock data.");
     return {
       style: LearningStyle.DIVERGENT,
-      description: "Modo Demonstração (Sem API Key): Você possui uma imaginação fértil e prefere observar situações de diferentes perspectivas antes de agir.",
-      strengths: ["Empatia", "Criatividade", "Trabalho em equipe"],
-      recommendations: ["Use mapas mentais", "Busque feedback pessoal", "Participe de discussões em grupo"],
+      description: "Modo Demonstração (Sem API Key): Você prefere observar, mas para aprender de verdade, precisa agir. A ciência mostra que 'aprender apenas no seu estilo' é um mito. Use sua observação para planejar, mas force-se a executar.",
+      strengths: ["Empatia", "Visão Holística", "Planejamento"],
+      recommendations: ["Aplique um conceito novo hoje mesmo", "Resolva um problema real do trabalho usando a teoria", "Ensine o que aprendeu para fixar"],
       axisData: { ce: 80, ro: 70, ac: 30, ae: 40 }
     };
   }
 
-  // 1. Calculate Mathematics locally (Reliability)
   const stats = calculateRawScores(answers);
 
-  // 2. Prepare Context for the AI (Nuance)
   const answersLog = Object.entries(answers).map(([id, choice]) => {
     const q = QUESTIONS.find(q => q.id === Number(id));
     if (!q) return "";
     const chosenText = choice === 'A' ? q.optionA.text : q.optionB.text;
     const axis = choice === 'A' ? q.optionA.axis : q.optionB.axis;
-    const rejectedAxis = choice === 'A' ? q.optionB.axis : q.optionA.axis;
-    return `- Na situação "${q.text}", o usuário preferiu "${axis}" (${chosenText}) ao invés de "${rejectedAxis}".`;
+    return `- Preferiu "${axis}" (${chosenText})`;
   }).join("\n");
 
-  const contextSpecificPrompt = profile.context === EducationalContext.PROFESSIONAL 
-    ? "Foque as recomendações em liderança, resolução de problemas corporativos e inovação."
-    : "Foque as recomendações em métodos de estudo, preparação para provas e trabalhos acadêmicos.";
-
   const prompt = `
-    Analise o perfil cognitivo deste usuário com base na Teoria de Aprendizagem Experiencial de David Kolb.
+    Atue como um Especialista em Andragogia (Educação de Adultos) e Neurociência.
+    Analise o perfil de: ${profile.name}, ${profile.age} anos, Contexto: ${profile.context}.
 
-    DADOS DO USUÁRIO:
-    Nome: ${profile.name}
-    Idade: ${profile.age} anos
-    Contexto Atual: ${profile.context}
+    PONTUAÇÃO BRUTA (Eixos de Kolb):
+    - Sentir (CE): ${stats.raw.CE} | Observar (RO): ${stats.raw.RO}
+    - Pensar (AC): ${stats.raw.AC} | Fazer (AE): ${stats.raw.AE}
 
-    PONTUAÇÃO BRUTA CALCULADA (Use como base para os eixos, mas ajuste se detectar nuances nas respostas):
-    - Experiência Concreta (Sentir): ${stats.raw.CE} pontos
-    - Observação Reflexiva (Observar): ${stats.raw.RO} pontos
-    - Conceituação Abstrata (Pensar): ${stats.raw.AC} pontos
-    - Experimentação Ativa (Fazer): ${stats.raw.AE} pontos
+    DIRETRIZES FUNDAMENTAIS (BASEADAS EM EVIDÊNCIA):
+    1. **Derrube o Mito:** Não diga ao usuário para aprender *apenas* do jeito que ele gosta. Explique que o "Estilo" é apenas o ponto de partida (zona de conforto), mas o aprendizado real acontece quando ele percorre o ciclo completo (incluindo o que ele não gosta).
+    2. **Foco em Andragogia:** Adultos precisam de *Autonomia*, *Resolução de Problemas Reais* e *Aplicação Imediata*.
+    3. **Metodologia Ativa:** Incentive PBL (Project Based Learning). A retenção passiva é baixa. A retenção ativa (fazendo) é alta.
 
-    DIÁRIO DE DECISÕES (Respostas detalhadas):
-    ${answersLog}
+    MISSÃO:
+    1. Classifique o estilo (Acomodador, Divergente, Convergente, Assimilador).
+    2. Na descrição: Valide a preferência dele, mas desafie-o a desenvolver o oposto. (Ex: Se ele é "Pensador", diga que ele precisa "Sentir/Fazer" para não esquecer o conteúdo).
+    3. Recomendações: Devem ser AÇÕES práticas para resolver problemas do dia a dia no contexto dele (${profile.context}). Nada de "ler mais livros". Sugira "aplicar a teoria X no problema Y".
 
-    SUA MISSÃO:
-    1. Determine o Estilo de Aprendizagem (Acomodador, Divergente, Convergente, Assimilador) cruzando os eixos dominantes.
-       - Nota: Se houver empate técnico nos eixos, use o "Diário de Decisões" para desempatar baseando-se na complexidade das perguntas.
-    2. Escreva uma descrição que NÃO seja genérica. Fale diretamente com o ${profile.name}.
-       - Exemplo: "João, embora você tenha um forte viés analítico, suas respostas mostram que em situações sociais você usa a intuição..."
-    3. As recomendações devem ser ULTRA-ESPECÍFICAS para o contexto: ${profile.context}.
-       - ${contextSpecificPrompt}
-       - Evite clichês como "estude mais". Dê táticas tangíveis.
-
-    Retorne APENAS o JSON válido.
+    Retorne APENAS JSON.
   `;
 
   try {
@@ -147,12 +132,11 @@ export const analyzeProfile = async (
         responseMimeType: "application/json",
         responseSchema: responseSchema,
         systemInstruction: `
-          Você é o NeuroStyle AI, um especialista sênior em Andragogia e Neurociência Cognitiva.
-          Seu tom é profissional, perspicaz e encorajador.
-          Você não apenas classifica, você explica o "porquê" baseado nas tensões entre Pensar vs Sentir e Agir vs Observar.
-          Você prioriza a utilidade prática das recomendações.
+          Você é o NeuroStyle AI. Sua filosofia é baseada na Andragogia moderna.
+          Você rejeita a "hipótese de mesclagem" (ensinar apenas no estilo do aluno).
+          Seu objetivo é promover a Agilidade de Aprendizagem (Learning Agility): a capacidade de transitar entre Sentir, Pensar, Observar e Agir conforme a necessidade do problema.
         `,
-        thinkingConfig: { thinkingBudget: 1024 } // Allow some reasoning budget for better diagnosis
+        thinkingConfig: { thinkingBudget: 1024 }
       },
     });
 
@@ -162,12 +146,11 @@ export const analyzeProfile = async (
     return JSON.parse(text) as AssessmentResult;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    // Graceful degradation layout in case of AI failure
     return {
       style: LearningStyle.DIVERGENT,
-      description: "Detectamos uma falha momentânea na conexão com a IA, mas seus dados indicam um perfil equilibrado.",
-      strengths: ["Resiliência", "Adaptação"],
-      recommendations: ["Tente novamente em instantes"],
+      description: "Erro ao gerar análise. Tente novamente.",
+      strengths: ["N/A"],
+      recommendations: ["Erro de conexão"],
       axisData: stats.normalized
     };
   }

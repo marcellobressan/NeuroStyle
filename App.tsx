@@ -4,7 +4,7 @@ import { Layout } from './components/Layout';
 import { StepWizard } from './components/StepWizard';
 import { UserProfile, AssessmentAnswers, EducationalContext, AssessmentResult } from './types';
 import { CONTEXT_OPTIONS, QUESTIONS } from './constants';
-import { ArrowRight, User, CheckCircle2, Lightbulb, RefreshCw } from 'lucide-react';
+import { ArrowRight, User, CheckCircle2, Lightbulb, RefreshCw, AlertCircle } from 'lucide-react';
 import { analyzeProfile } from './services/geminiService';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
@@ -19,20 +19,20 @@ const Home = () => {
         Descubra como seu cérebro <span className="text-indigo-600">aprende melhor</span>
       </h1>
       <p className="text-lg text-slate-600 mb-10 max-w-xl">
-        Utilize inteligência artificial baseada na teoria de Kolb para identificar seu estilo de aprendizagem e receba estratégias personalizadas para sua carreira ou estudos.
+        Utilize inteligência artificial baseada em Andragogia para identificar sua zona de conforto e criar estratégias de aprendizado ativo.
       </p>
       <button 
         onClick={() => navigate('/assessment')}
         className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-indigo-600 rounded-full overflow-hidden transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600"
       >
         <span className="relative flex items-center gap-2">
-          Iniciar Avaliação
+          Iniciar Análise
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </span>
       </button>
       <div className="mt-12 flex gap-8 text-sm text-slate-400">
         <span>⏱️ Aprox. 3 minutos</span>
-        <span>🧠 Baseado em Neurociência</span>
+        <span>🧠 Baseado em Evidências</span>
         <span>🔒 100% Gratuito</span>
       </div>
     </div>
@@ -87,8 +87,8 @@ const Assessment = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
-        <h2 className="text-2xl font-bold text-slate-800">Analisando seu perfil...</h2>
-        <p className="text-slate-500 mt-2">Nossa IA está cruzando seus dados com a teoria de Kolb.</p>
+        <h2 className="text-2xl font-bold text-slate-800">Consultando o Especialista...</h2>
+        <p className="text-slate-500 mt-2">Nossa IA está criando um plano baseado em Andragogia.</p>
       </div>
     );
   }
@@ -163,8 +163,8 @@ const Assessment = () => {
         {step > 1 && (
           <div className="space-y-8">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">Como você prefere aprender?</h2>
-              <p className="text-slate-500">Selecione a opção que melhor descreve seu comportamento habitual.</p>
+              <h2 className="text-2xl font-bold text-slate-800">Como você prefere resolver problemas?</h2>
+              <p className="text-slate-500">Selecione a opção que melhor descreve sua primeira reação.</p>
             </div>
 
             <div className="space-y-6">
@@ -216,7 +216,7 @@ const Assessment = () => {
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'}
                 `}
               >
-                {isLastStep ? 'Finalizar Análise' : 'Próximo'}
+                {isLastStep ? 'Gerar Análise' : 'Próximo'}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -239,10 +239,10 @@ const Result = () => {
   const { result, profile } = state;
 
   const chartData = [
-    { subject: 'Exp. Concreta (CE)', A: result.axisData.ce, fullMark: 100 },
-    { subject: 'Obs. Reflexiva (RO)', A: result.axisData.ro, fullMark: 100 },
-    { subject: 'Conc. Abstrata (AC)', A: result.axisData.ac, fullMark: 100 },
-    { subject: 'Exp. Ativa (AE)', A: result.axisData.ae, fullMark: 100 },
+    { subject: 'Exp. Concreta (Sentir)', A: result.axisData.ce, fullMark: 100 },
+    { subject: 'Obs. Reflexiva (Observar)', A: result.axisData.ro, fullMark: 100 },
+    { subject: 'Conc. Abstrata (Pensar)', A: result.axisData.ac, fullMark: 100 },
+    { subject: 'Exp. Ativa (Fazer)', A: result.axisData.ae, fullMark: 100 },
   ];
 
   return (
@@ -250,27 +250,42 @@ const Result = () => {
       {/* Header Result */}
       <div className="text-center mb-12">
         <div className="inline-block bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-bold tracking-wide uppercase mb-4">
-          Resultado da Análise
+          Resultado da Análise Andragógica
         </div>
         <h1 className="text-4xl font-extrabold text-slate-900 leading-tight mb-4">
-          {profile.name}, seu estilo é <span className="text-indigo-600">{result.style}</span>
+          {profile.name}, sua zona de conforto é <span className="text-indigo-600">{result.style}</span>
         </h1>
         <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
           {result.description}
         </p>
       </div>
 
+      {/* Warning Card about "Matching Hypothesis" */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-12 max-w-3xl mx-auto flex gap-4 items-start">
+        <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+        <div className="text-left">
+          <h4 className="font-bold text-amber-800">Cuidado com a "Zona de Conforto"</h4>
+          <p className="text-sm text-amber-700 mt-1">
+            Pesquisas recentes mostram que aprender <strong>apenas</strong> no seu estilo preferido não traz melhores resultados. 
+            Para reter conhecimento real, você precisa desafiar as áreas onde sua pontuação foi menor no gráfico abaixo.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
         {/* Radar Chart */}
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex flex-col items-center justify-center min-h-[350px]">
-          <h3 className="text-lg font-semibold text-slate-800 mb-6 w-full text-center border-b border-slate-100 pb-2">
-            Seu Mapa de Aprendizagem
+          <h3 className="text-lg font-semibold text-slate-800 mb-2 w-full text-center">
+            Seu Ciclo de Aprendizagem
           </h3>
+          <p className="text-xs text-slate-500 mb-6 text-center">
+            Quanto maior a área, maior sua preferência natural.
+          </p>
           <div className="w-full h-[300px] min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
                 <PolarGrid stroke="#e2e8f0" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }} />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                 <Radar
                   name={profile.name}
@@ -305,14 +320,17 @@ const Result = () => {
             </ul>
           </div>
           
-          {/* Recommendations */}
+          {/* Recommendations (PBL Focused) */}
           <div className="bg-gradient-to-br from-indigo-900 to-indigo-800 text-white p-6 rounded-2xl shadow-md flex-1">
             <div className="flex items-center gap-3 mb-4">
                <div className="bg-indigo-700/50 p-2 rounded-lg">
                 <Lightbulb className="w-5 h-5 text-indigo-200" />
                </div>
-              <h3 className="text-lg font-bold text-white">Estratégias para Você</h3>
+              <h3 className="text-lg font-bold text-white">Desafios Práticos (PBL)</h3>
             </div>
+            <p className="text-xs text-indigo-200 mb-4 border-b border-indigo-700 pb-2">
+              Para vencer a "Curva do Esquecimento", aplique isso hoje:
+            </p>
              <ul className="space-y-3">
               {result.recommendations.map((r, i) => (
                 <li key={i} className="flex items-start gap-3 text-indigo-100">
