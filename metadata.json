@@ -1,0 +1,5 @@
+{
+  "name": "NeuroStyle - Detector de Estilo de Aprendizagem",
+  "description": "Uma aplicação inteligente para identificar estilos de aprendizagem baseados na teoria de Kolb, adaptada para contextos profissionais e educacionais.",
+  "requestFramePermissions": []
+}
