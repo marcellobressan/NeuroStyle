@@ -97,8 +97,8 @@ const Assessment = () => {
     <div className="max-w-2xl mx-auto py-10 px-4">
       <StepWizard 
         currentStep={step} 
-        totalSteps={3} 
-        labels={['Perfil', 'Preferências I', 'Preferências II']} 
+        totalSteps={4} 
+        labels={['Perfil', 'Preferências I', 'Preferências II', 'Preferências III']} 
       />
 
       <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 transition-all animate-fade-in-up">

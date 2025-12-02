@@ -59,5 +59,29 @@ export const QUESTIONS: Question[] = [
     text: "Para tomar uma decisão importante, eu...",
     optionA: { text: "Considero como ela afeta as pessoas.", axis: "CE" },
     optionB: { text: "Analiso os prós e contras objetivamente.", axis: "AC" }
+  },
+  {
+    id: 9,
+    text: "Quando preciso aprender a usar um novo software ou ferramenta...",
+    optionA: { text: "Leio o manual ou a ajuda para entender os princípios primeiro.", axis: "AC" },
+    optionB: { text: "Começo a mexer e testar as funções para ver o que acontece.", axis: "AE" }
+  },
+  {
+    id: 10,
+    text: "Em situações sociais ou de trabalho, eu costumo ser mais...",
+    optionA: { text: "Sensível aos sentimentos e clima emocional.", axis: "CE" },
+    optionB: { text: "Observador e analítico antes de me envolver.", axis: "RO" }
+  },
+  {
+    id: 11,
+    text: "O que me dá mais satisfação em um projeto é...",
+    optionA: { text: "Sentir que estou ajudando pessoas e criando conexões.", axis: "CE" },
+    optionB: { text: "Ver as coisas funcionando e tarefas sendo concluídas.", axis: "AE" }
+  },
+  {
+    id: 12,
+    text: "Para mim, a chave para o sucesso é...",
+    optionA: { text: "Ter tempo para planejar e refletir sobre as consequências.", axis: "RO" },
+    optionB: { text: "Ter uma base racional e lógica sólida para as decisões.", axis: "AC" }
   }
 ];
