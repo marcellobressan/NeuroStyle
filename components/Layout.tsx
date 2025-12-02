@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrainCircuit, BookOpen } from 'lucide-react';
+import { TheoryModal } from './TheoryModal';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isTheoryOpen, setIsTheoryOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
@@ -13,9 +16,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <span className="font-bold text-xl tracking-tight text-slate-800">NeuroStyle</span>
           </div>
           <nav>
-            <a href="#" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+            <button 
+              onClick={() => setIsTheoryOpen(true)}
+              className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors focus:outline-none"
+            >
               Sobre a Teoria
-            </a>
+            </button>
           </nav>
         </div>
       </header>
@@ -35,6 +41,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </p>
         </div>
       </footer>
+
+      <TheoryModal isOpen={isTheoryOpen} onClose={() => setIsTheoryOpen(false)} />
     </div>
   );
 };

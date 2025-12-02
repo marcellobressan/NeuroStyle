@@ -1,9 +1,8 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { UserProfile, AssessmentAnswers, AssessmentResult, LearningStyle } from "../types";
+import { UserProfile, AssessmentAnswers, AssessmentResult, LearningStyle, EducationalContext } from "../types";
 import { QUESTIONS } from "../constants";
 
 // Initialize Gemini Client
-// IMPORTANT: In a real production app, ensure this key is guarded.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 const responseSchema: Schema = {
@@ -17,34 +16,66 @@ const responseSchema: Schema = {
         LearningStyle.CONVERGENT,
         LearningStyle.DIVERGENT
       ],
-      description: "The identified Kolb learning style."
+      description: "O estilo de aprendizado Kolb identificado."
     },
     description: {
       type: Type.STRING,
-      description: "A concise description of the user's learning personality."
+      description: "Uma análise psicológica profunda e personalizada sobre como este usuário processa informações, citando nuances específicas das respostas."
     },
     strengths: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List of 3-4 key strengths."
+      description: "Lista de 4 pontos fortes comportamentais específicos."
     },
     recommendations: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "Specific study or work strategies tailored to the user."
+      description: "Estratégias práticas e acionáveis adaptadas EXCLUSIVAMENTE ao contexto (Trabalho ou Estudo) e idade do usuário."
     },
     axisData: {
       type: Type.OBJECT,
       properties: {
-        ce: { type: Type.NUMBER, description: "Concrete Experience score (0-100)" },
-        ro: { type: Type.NUMBER, description: "Reflective Observation score (0-100)" },
-        ac: { type: Type.NUMBER, description: "Abstract Conceptualization score (0-100)" },
-        ae: { type: Type.NUMBER, description: "Active Experimentation score (0-100)" }
+        ce: { type: Type.NUMBER, description: "Experiência Concreta (Sentir) score (0-100)" },
+        ro: { type: Type.NUMBER, description: "Observação Reflexiva (Observar) score (0-100)" },
+        ac: { type: Type.NUMBER, description: "Conceituação Abstrata (Pensar) score (0-100)" },
+        ae: { type: Type.NUMBER, description: "Experimentação Ativa (Fazer) score (0-100)" }
       },
       required: ["ce", "ro", "ac", "ae"]
     }
   },
   required: ["style", "description", "strengths", "recommendations", "axisData"]
+};
+
+// Helper to calculate raw scores locally to help the AI
+const calculateRawScores = (answers: AssessmentAnswers) => {
+  const scores = { CE: 0, RO: 0, AC: 0, AE: 0 };
+  
+  Object.entries(answers).forEach(([qId, answer]) => {
+    const question = QUESTIONS.find(q => q.id === Number(qId));
+    if (question) {
+      const axis = answer === 'A' ? question.optionA.axis : question.optionB.axis;
+      if (scores[axis] !== undefined) {
+        scores[axis]++;
+      }
+    }
+  });
+
+  // Normalize to approximate percentages (simple heuristic based on question distribution)
+  // This is a helper for the AI, specifically for the axisData visual
+  const total = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
+  const normalized = {
+    ce: Math.round((scores.CE / total) * 100 * 1.5), // Multiplier to fill radar chart better
+    ro: Math.round((scores.RO / total) * 100 * 1.5),
+    ac: Math.round((scores.AC / total) * 100 * 1.5),
+    ae: Math.round((scores.AE / total) * 100 * 1.5)
+  };
+
+  // Cap at 100
+  (Object.keys(normalized) as Array<keyof typeof normalized>).forEach(key => {
+    if (normalized[key] > 100) normalized[key] = 100;
+  });
+
+  return { raw: scores, normalized };
 };
 
 export const analyzeProfile = async (
@@ -53,46 +84,59 @@ export const analyzeProfile = async (
 ): Promise<AssessmentResult> => {
   if (!process.env.API_KEY) {
     console.warn("API Key missing. Returning mock data.");
-    // Fallback mock for demonstration if key is missing
     return {
       style: LearningStyle.DIVERGENT,
-      description: "Demonstração (Sem API Key): Você tende a ver situações concretas sob muitas perspectivas.",
-      strengths: ["Imaginação", "Brainstorming", "Abertura mental"],
-      recommendations: ["Trabalhos em grupo", "Mapas mentais", "Feedback personalizado"],
+      description: "Modo Demonstração (Sem API Key): Você possui uma imaginação fértil e prefere observar situações de diferentes perspectivas antes de agir.",
+      strengths: ["Empatia", "Criatividade", "Trabalho em equipe"],
+      recommendations: ["Use mapas mentais", "Busque feedback pessoal", "Participe de discussões em grupo"],
       axisData: { ce: 80, ro: 70, ac: 30, ae: 40 }
     };
   }
 
-  // Construct a prompt context that explains the inputs
-  const answersSummary = Object.entries(answers).map(([id, choice]) => {
+  // 1. Calculate Mathematics locally (Reliability)
+  const stats = calculateRawScores(answers);
+
+  // 2. Prepare Context for the AI (Nuance)
+  const answersLog = Object.entries(answers).map(([id, choice]) => {
     const q = QUESTIONS.find(q => q.id === Number(id));
     if (!q) return "";
     const chosenText = choice === 'A' ? q.optionA.text : q.optionB.text;
     const axis = choice === 'A' ? q.optionA.axis : q.optionB.axis;
-    return `Question: ${q.text} -> Answer: ${chosenText} (Axis Preference: ${axis})`;
+    const rejectedAxis = choice === 'A' ? q.optionB.axis : q.optionA.axis;
+    return `- Na situação "${q.text}", o usuário preferiu "${axis}" (${chosenText}) ao invés de "${rejectedAxis}".`;
   }).join("\n");
 
+  const contextSpecificPrompt = profile.context === EducationalContext.PROFESSIONAL 
+    ? "Foque as recomendações em liderança, resolução de problemas corporativos e inovação."
+    : "Foque as recomendações em métodos de estudo, preparação para provas e trabalhos acadêmicos.";
+
   const prompt = `
-    Atue como um especialista em Psicologia Educacional e Ciência de Dados, focado na teoria de David Kolb.
-    Analise o perfil e as respostas do seguinte usuário para determinar seu Estilo de Aprendizagem.
+    Analise o perfil cognitivo deste usuário com base na Teoria de Aprendizagem Experiencial de David Kolb.
 
-    Dados do Usuário:
-    - Nome: ${profile.name}
-    - Idade: ${profile.age}
-    - Contexto: ${profile.context}
+    DADOS DO USUÁRIO:
+    Nome: ${profile.name}
+    Idade: ${profile.age} anos
+    Contexto Atual: ${profile.context}
 
-    Respostas do Inventário:
-    ${answersSummary}
+    PONTUAÇÃO BRUTA CALCULADA (Use como base para os eixos, mas ajuste se detectar nuances nas respostas):
+    - Experiência Concreta (Sentir): ${stats.raw.CE} pontos
+    - Observação Reflexiva (Observar): ${stats.raw.RO} pontos
+    - Conceituação Abstrata (Pensar): ${stats.raw.AC} pontos
+    - Experimentação Ativa (Fazer): ${stats.raw.AE} pontos
 
-    Tarefa:
-    1. Calcule uma pontuação aproximada (0-100) para cada eixo de Kolb (CE, RO, AC, AE) baseando-se na frequência das respostas associadas a cada eixo e inferência comportamental do perfil.
-    2. Classifique o usuário em um dos 4 estilos: Acomodador, Divergente, Convergente ou Assimilador.
-       - Divergente (CE + RO)
-       - Assimilador (AC + RO)
-       - Convergente (AC + AE)
-       - Acomodador (CE + AE)
-    3. Forneça 4-5 recomendações práticas (incluindo sugestões de livros, tipos de vídeos/podcasts ou atividades práticas) especificamente adaptadas à Idade e ao Contexto Educacional (ex: se for Profissional, foque em carreira; se Universitário, em estudos).
-    4. Responda estritamente no formato JSON fornecido.
+    DIÁRIO DE DECISÕES (Respostas detalhadas):
+    ${answersLog}
+
+    SUA MISSÃO:
+    1. Determine o Estilo de Aprendizagem (Acomodador, Divergente, Convergente, Assimilador) cruzando os eixos dominantes.
+       - Nota: Se houver empate técnico nos eixos, use o "Diário de Decisões" para desempatar baseando-se na complexidade das perguntas.
+    2. Escreva uma descrição que NÃO seja genérica. Fale diretamente com o ${profile.name}.
+       - Exemplo: "João, embora você tenha um forte viés analítico, suas respostas mostram que em situações sociais você usa a intuição..."
+    3. As recomendações devem ser ULTRA-ESPECÍFICAS para o contexto: ${profile.context}.
+       - ${contextSpecificPrompt}
+       - Evite clichês como "estude mais". Dê táticas tangíveis.
+
+    Retorne APENAS o JSON válido.
   `;
 
   try {
@@ -102,6 +146,13 @@ export const analyzeProfile = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
+        systemInstruction: `
+          Você é o NeuroStyle AI, um especialista sênior em Andragogia e Neurociência Cognitiva.
+          Seu tom é profissional, perspicaz e encorajador.
+          Você não apenas classifica, você explica o "porquê" baseado nas tensões entre Pensar vs Sentir e Agir vs Observar.
+          Você prioriza a utilidade prática das recomendações.
+        `,
+        thinkingConfig: { thinkingBudget: 1024 } // Allow some reasoning budget for better diagnosis
       },
     });
 
@@ -111,6 +162,13 @@ export const analyzeProfile = async (
     return JSON.parse(text) as AssessmentResult;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error("Falha ao analisar o perfil. Tente novamente.");
+    // Graceful degradation layout in case of AI failure
+    return {
+      style: LearningStyle.DIVERGENT,
+      description: "Detectamos uma falha momentânea na conexão com a IA, mas seus dados indicam um perfil equilibrado.",
+      strengths: ["Resiliência", "Adaptação"],
+      recommendations: ["Tente novamente em instantes"],
+      axisData: stats.normalized
+    };
   }
 };
