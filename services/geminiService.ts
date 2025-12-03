@@ -78,6 +78,18 @@ const calculateRawScores = (answers: AssessmentAnswers) => {
   return { raw: scores, normalized };
 };
 
+// Helper to strip markdown code blocks if present
+const cleanJsonResponse = (text: string): string => {
+  let cleaned = text.trim();
+  // Remove markdown JSON code blocks if present
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  }
+  return cleaned;
+};
+
 export const analyzeProfile = async (
   profile: UserProfile,
   answers: AssessmentAnswers
@@ -94,14 +106,6 @@ export const analyzeProfile = async (
   }
 
   const stats = calculateRawScores(answers);
-
-  const answersLog = Object.entries(answers).map(([id, choice]) => {
-    const q = QUESTIONS.find(q => q.id === Number(id));
-    if (!q) return "";
-    const chosenText = choice === 'A' ? q.optionA.text : q.optionB.text;
-    const axis = choice === 'A' ? q.optionA.axis : q.optionB.axis;
-    return `- Preferiu "${axis}" (${chosenText})`;
-  }).join("\n");
 
   const prompt = `
     Atue como um Especialista em Andragogia (Educação de Adultos) e Neurociência.
@@ -121,7 +125,7 @@ export const analyzeProfile = async (
     2. Na descrição: Valide a preferência dele, mas desafie-o a desenvolver o oposto. (Ex: Se ele é "Pensador", diga que ele precisa "Sentir/Fazer" para não esquecer o conteúdo).
     3. Recomendações: Devem ser AÇÕES práticas para resolver problemas do dia a dia no contexto dele (${profile.context}). Nada de "ler mais livros". Sugira "aplicar a teoria X no problema Y".
 
-    Retorne APENAS JSON.
+    Retorne APENAS JSON válido.
   `;
 
   try {
@@ -143,14 +147,17 @@ export const analyzeProfile = async (
     const text = response.text;
     if (!text) throw new Error("No response from AI");
     
-    return JSON.parse(text) as AssessmentResult;
+    // Clean and parse
+    const cleanedText = cleanJsonResponse(text);
+    return JSON.parse(cleanedText) as AssessmentResult;
+
   } catch (error) {
     console.error("Gemini API Error:", error);
     return {
       style: LearningStyle.DIVERGENT,
-      description: "Erro ao gerar análise. Tente novamente.",
-      strengths: ["N/A"],
-      recommendations: ["Erro de conexão"],
+      description: "Não foi possível gerar a análise personalizada no momento. Verifique se a chave de API está ativa e possui cota disponível.",
+      strengths: ["Persistência", "Adaptação", "Resiliência"],
+      recommendations: ["Tente novamente em alguns instantes", "Verifique sua conexão com a internet"],
       axisData: stats.normalized
     };
   }
